@@ -11,6 +11,7 @@ import dev.ryanhcode.sable.api.command.SubLevelArgumentType;
 import dev.ryanhcode.sable.sublevel.ServerSubLevel;
 import dev.simulated_team.simulated.content.entities.honey_glue.HoneyGlueEntity;
 import dev.simulated_team.simulated.content.physics_staff.PhysicsStaffServerHandler;
+import net.createmod.catnip.platform.CatnipServices;
 import net.minecraft.commands.CommandBuildContext;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
@@ -23,27 +24,29 @@ import java.util.Collection;
 
 public class SimCommand {
     public static void register(final CommandDispatcher<CommandSourceStack> dispatcher, final CommandBuildContext buildContext) {
-        final LiteralArgumentBuilder<CommandSourceStack> cmd = Commands.literal("simulated")
-                .then(Commands.literal("debugthing")
-                        .requires(command -> command.hasPermission(2))
-                        .then(Commands.literal("start")
-                                .then(Commands.argument("steps", IntegerArgumentType.integer()).executes(SimDebugThingCommands::start)))
-                        .then(Commands.literal("stop").executes(SimDebugThingCommands::stop))
-                        .then(Commands.literal("abort").executes(SimDebugThingCommands::abort))
-                                .then(Commands.literal("stop_sublevels").executes(SimDebugThingCommands::stopSublevels)))
-                .then(Commands.literal("lock")
-                        .requires(command -> command.hasPermission(2))
-                        .then(Commands.argument("sub_levels", SubLevelArgumentType.subLevels())
-                                .executes(ctx -> lockSubLevels(ctx, true))
-                                .then(Commands.argument("locked", BoolArgumentType.bool())
-                                        .executes(ctx -> lockSubLevels(ctx, false)))))
-                .then(Commands.literal("glue")
-                        .requires(command -> command.hasPermission(2))
-                        .then(Commands.argument("from", BlockPosArgument.blockPos())
-                                .then(Commands.argument("to", BlockPosArgument.blockPos())
-                                        .executes(SimCommand::glueArea)))
-                )
-                ;
+        final LiteralArgumentBuilder<CommandSourceStack> cmd = Commands.literal("simulated");
+
+        if(CatnipServices.PLATFORM.isDevelopmentEnvironment()) {
+            cmd.then(Commands.literal("debugthing")
+                    .requires(command -> command.hasPermission(2))
+                    .then(Commands.literal("start")
+                            .then(Commands.argument("steps", IntegerArgumentType.integer()).executes(SimDebugThingCommands::start)))
+                    .then(Commands.literal("stop").executes(SimDebugThingCommands::stop))
+                    .then(Commands.literal("abort").executes(SimDebugThingCommands::abort))
+                    .then(Commands.literal("stop_sublevels").executes(SimDebugThingCommands::stopSublevels)));
+        }
+
+        cmd.then(Commands.literal("lock")
+                .requires(command -> command.hasPermission(2))
+                .then(Commands.argument("sub_levels", SubLevelArgumentType.subLevels())
+                        .executes(ctx -> lockSubLevels(ctx, true))
+                        .then(Commands.argument("locked", BoolArgumentType.bool())
+                                .executes(ctx -> lockSubLevels(ctx, false)))));
+        cmd.then(Commands.literal("glue")
+                .requires(command -> command.hasPermission(2))
+                .then(Commands.argument("from", BlockPosArgument.blockPos())
+                        .then(Commands.argument("to", BlockPosArgument.blockPos())
+                                .executes(SimCommand::glueArea))));
 
         dispatcher.register(cmd);
     }
