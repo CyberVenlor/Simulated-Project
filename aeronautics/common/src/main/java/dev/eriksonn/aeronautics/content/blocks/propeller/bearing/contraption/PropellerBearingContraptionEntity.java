@@ -15,6 +15,8 @@ import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.phys.Vec3;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
 import org.joml.Quaternionf;
 
 import static net.createmod.catnip.math.AngleHelper.angleLerp;
@@ -82,13 +84,14 @@ public class PropellerBearingContraptionEntity extends ControlledContraptionEnti
     }
 
     @Override
-    public void applyLocalTransforms(final PoseStack PoseStack, final float partialTicks) {
+    @OnlyIn(Dist.CLIENT)
+    public void applyLocalTransforms(final PoseStack poseStack, final float partialTicks) {
         //super.applyLocalTransforms(PoseStack, partialTicks);
         final float angle = this.getAngle(partialTicks);
         final Direction.Axis axis = this.getRotationAxis();
         Vec3 normal = new Vec3(this.direction.getStepX(), this.direction.getStepY(), this.direction.getStepZ());
         normal = normal.scale(12 / 16.0);
-        TransformStack.of(PoseStack)
+        TransformStack.of(poseStack)
                 .nudge(this.getId())
                 .center()
                 .translate(normal.scale(-1))
