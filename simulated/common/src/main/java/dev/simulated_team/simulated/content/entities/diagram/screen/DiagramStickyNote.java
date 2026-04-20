@@ -249,7 +249,6 @@ public class DiagramStickyNote extends DiagramButton {
         final Pose3dc renderPose = this.parent.subLevel.renderPose(partialTicks);
         renderPose.transformPosition(NOTE_CAMERA_POS.set(NOTE_LOCAL_CAM_POS));
 
-        this.fbo.clear();
         DiagramScreen.draw(this.parent.subLevel, partialTicks, NOTE_ORIENTATION, NOTE_PROJ_MAT, NOTE_CAMERA_POS, SUBLEVEL_RENDER_WIDTH_PIXELS, SUBLEVEL_RENDER_HEIGHT_PIXELS, this.fbo, this.outlineFbo, this.finalFbo, 0.75f, 1.15f, 0x6e684d, 0x59543e);
     }
 

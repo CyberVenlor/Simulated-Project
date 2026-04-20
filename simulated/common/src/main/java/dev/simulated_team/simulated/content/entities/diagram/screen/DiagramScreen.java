@@ -50,7 +50,6 @@ import net.minecraft.util.Tuple;
 import net.minecraft.world.phys.AABB;
 import org.jetbrains.annotations.Nullable;
 import org.joml.*;
-import org.lwjgl.glfw.GLFW;
 
 import java.lang.Math;
 import java.util.ArrayList;
@@ -147,11 +146,10 @@ public class DiagramScreen extends AbstractSimiScreen {
         LOCAL_ORIENTATION.identity().rotateY((float) Math.toRadians(this.config.yaw())).rotateX((float) Math.toRadians(this.config.pitch()));
     }
 
-    @Override
-    public void onClose() {
-        super.onClose();
-
-        this.note.free();
+    private void freeFramebuffers() {
+        if (this.note != null) {
+            this.note.free();
+        }
 
         if (this.fbo != null) {
             this.fbo.free();
@@ -166,8 +164,15 @@ public class DiagramScreen extends AbstractSimiScreen {
     }
 
     @Override
+    public void onClose() {
+        super.onClose();
+        this.freeFramebuffers();
+    }
+
+    @Override
     protected void init() {
         super.init();
+        this.freeFramebuffers();
         this.fbo = AdvancedFbo.withSize(DIAGRAM_TEXTURE.width, DIAGRAM_TEXTURE.height).addColorTextureBuffer().setDepthTextureBuffer().build(true);
         this.outlineFbo = AdvancedFbo.withSize(DIAGRAM_TEXTURE.width, DIAGRAM_TEXTURE.height).addColorTextureBuffer().build(true);
         this.finalFbo = AdvancedFbo.withSize(DIAGRAM_TEXTURE.width, DIAGRAM_TEXTURE.height).addColorTextureBuffer().build(true);
@@ -423,12 +428,12 @@ public class DiagramScreen extends AbstractSimiScreen {
         final Pose3dc renderPose = ((ClientSubLevel) subLevel).renderPose(partialTicks);
         renderPose.transformPosition(CAMERA_POSITION.set(LOCAL_CAMERA_POSITION));
 
-        this.fbo.clear();
         draw(subLevel, partialTicks, LOCAL_ORIENTATION, PROJECTION_MAT, CAMERA_POSITION, DIAGRAM_TEXTURE.width, DIAGRAM_TEXTURE.height, this.fbo, this.outlineFbo, this.finalFbo, 0.25f, 1.0f, 0x2E3032, 0x696965);
     }
 
     public static void draw(final SubLevel subLevel, final float partialTicks, final Quaternionf localOrientation, final Matrix4f projMatrix, final Vector3d cameraPos, final float inWidth, final float inHeight, final AdvancedFbo fbo, final AdvancedFbo outlineFbo, final AdvancedFbo finalFbo, final float paletteOffset, final float fadeScale, final int lineColor, final int lineShadowColor) {
         fbo.bind(true);
+        fbo.clear();
 
         final Pose3dc renderPose = ((ClientSubLevel) subLevel).renderPose(partialTicks);
         final Quaternionf orientation = new Quaternionf(renderPose.orientation()).conjugate();
