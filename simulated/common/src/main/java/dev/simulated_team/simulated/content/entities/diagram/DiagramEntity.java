@@ -33,6 +33,7 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtOps;
 import net.minecraft.nbt.Tag;
 import net.minecraft.network.syncher.SynchedEntityData;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
@@ -64,7 +65,7 @@ import java.util.Objects;
 import java.util.WeakHashMap;
 
 public class DiagramEntity extends HangingEntity implements ISyncPersistentData, IInteractionChecker, SpecialEntityItemRequirement {
-    private static final Map<ServerSubLevel, DiagramRecordingTicket> queuedDiagramRecordings = new WeakHashMap<>();
+    private static final Map<ResourceKey<Level>, Map<ServerSubLevel, DiagramRecordingTicket>> queuedDiagramRecordings = new WeakHashMap<>();
 
     protected int size;
     protected Direction verticalOrientation;
@@ -99,7 +100,8 @@ public class DiagramEntity extends HangingEntity implements ISyncPersistentData,
         if (!(subLevel instanceof final ServerSubLevel serverSubLevel)) return;
         serverSubLevel.enableIndividualQueuedForcesTracking(true);
 
-        DiagramRecordingTicket ticket = queuedDiagramRecordings.get(serverSubLevel);
+        final Map<ServerSubLevel, DiagramRecordingTicket> map = queuedDiagramRecordings.get(serverSubLevel.getLevel().dimension());
+        DiagramRecordingTicket ticket = map != null ? map.get(serverSubLevel) : null;
 
         if (ticket != null && !ticket.isValid()) {
             queuedDiagramRecordings.remove(serverSubLevel);
@@ -109,7 +111,8 @@ public class DiagramEntity extends HangingEntity implements ISyncPersistentData,
         if (ticket == null) {
             final List<ServerPlayer> players = new ObjectArrayList<>();
             ticket = new DiagramRecordingTicket(serverSubLevel, players);
-            queuedDiagramRecordings.put(serverSubLevel, ticket);
+            queuedDiagramRecordings.computeIfAbsent(serverSubLevel.getLevel().dimension(), x -> new Object2ObjectOpenHashMap<>())
+                    .put(serverSubLevel, ticket);
         }
 
         final List<ServerPlayer> players = ticket.players();
@@ -118,8 +121,11 @@ public class DiagramEntity extends HangingEntity implements ISyncPersistentData,
         }
     }
 
-    public static void postPhysicsTick() {
-        final var iter = queuedDiagramRecordings.entrySet().iterator();
+    public static void postPhysicsTick(final Level level) {
+        final Map<ServerSubLevel, DiagramRecordingTicket> map = queuedDiagramRecordings.get(level.dimension());
+        if (map == null) return;
+
+        final var iter = map.entrySet().iterator();
 
         while (iter.hasNext()) {
             final var entry = iter.next();
