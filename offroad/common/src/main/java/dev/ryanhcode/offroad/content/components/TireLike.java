@@ -27,6 +27,10 @@ public record TireLike(float radius, Vec3 rotation, Vec3 offset, Optional<Resour
         this(radius, new Vec3(90, 0, 0), new Vec3(0, 0, 0), Optional.empty());
     }
 
+    public TireLike(final float radius, final Vec3 offset) {
+        this(radius, new Vec3(90, 0, 0), offset, Optional.empty());
+    }
+
     public TireLike(final float radius, final ResourceLocation model) {
         this(radius, new Vec3(90, 0, 0), new Vec3(0, 0, 0), Optional.of(model));
     }
@@ -38,7 +42,7 @@ public record TireLike(float radius, Vec3 rotation, Vec3 offset, Optional<Resour
     public static final TireLike MONSTROUS_TIRE = new TireLike(1.0f + 14.0f / 16.0f, Offroad.path("item/monstrous_tire/block"));
     */
     public static final TireLike SMALL_TIRE = new TireLike(12.0f / 16.0f);
-    public static final TireLike TIRE = new TireLike(15.5f / 16.0f);
+    public static final TireLike TIRE = new TireLike(18.7f / 16.0f);
     public static final TireLike LARGE_TIRE = new TireLike(1.0f + 4.0f / 16.0f);
     public static final TireLike MONSTROUS_TIRE = new TireLike(2.0f);
     public static final TireLike CRUSHING_WHEEL = new TireLike(1.0f);

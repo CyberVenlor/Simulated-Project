@@ -66,7 +66,7 @@ import java.util.List;
 
 public class WheelMountBlockEntity extends KineticBlockEntity implements BlockEntitySubLevelActor, Clearable, ClipboardCloneable, SpecialBlockEntityItemRequirement {
     private static final MutableComponent SCROLL_OPTION_TITLE = OffroadLang.translate("scroll_option.suspension_strength").component();
-    private static final double MAX_ALLOWED_EXTENSION = 0.65;
+    private static final double MAX_ALLOWED_EXTENSION = 0.75;
     private static final double NO_WHEEL_EXTENSION = 0.5;
 
     private static final Collection<WheelMountBlockEntity> queuedWheelMounts = new ObjectOpenHashSet<>();
