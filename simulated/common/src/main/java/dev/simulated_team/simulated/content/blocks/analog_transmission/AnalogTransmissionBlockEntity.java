@@ -100,6 +100,9 @@ public class AnalogTransmissionBlockEntity extends KineticBlockEntity implements
         }
 
         this.updateFerrariEngineDebugState();
+        if (this.getLevel().isClientSide) {
+            AnalogTransmissionAudioRegistry.markClientTicking(this);
+        }
         this.extraWheel.tick();
         super.tick();
     }
@@ -199,7 +202,7 @@ public class AnalogTransmissionBlockEntity extends KineticBlockEntity implements
             if (this.getFerrariEnginePowerInput() > 0.01f) {
                 this.ferrariEngine.throttle = clamp(this.ferrariEngine.throttle + 0.2, 0.0, 1.0);
             } else {
-                this.ferrariEngine.throttle = clamp(this.ferrariEngine.throttle - 0.2, 0.0, 1.0);
+                this.ferrariEngine.throttle = clamp(this.ferrariEngine.throttle - 0.35, 0.0, 1.0);
             }
         }
 

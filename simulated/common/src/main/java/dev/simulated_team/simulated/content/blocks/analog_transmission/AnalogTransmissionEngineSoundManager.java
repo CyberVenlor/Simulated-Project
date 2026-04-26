@@ -1,5 +1,6 @@
 package dev.simulated_team.simulated.content.blocks.analog_transmission;
 
+import dev.ryanhcode.sable.Sable;
 import dev.simulated_team.simulated.api.sound.SimSoundEntry;
 import dev.simulated_team.simulated.index.SimSoundEvents;
 import net.minecraft.client.Minecraft;
@@ -7,119 +8,46 @@ import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.resources.sounds.AbstractTickableSoundInstance;
 import net.minecraft.client.resources.sounds.SoundInstance;
-import net.minecraft.core.BlockPos;
-import net.minecraft.network.chat.Component;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.util.Mth;
 import net.minecraft.util.RandomSource;
-import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.phys.Vec3;
 
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.Iterator;
-import java.util.Locale;
 import java.util.Map;
 
 public class AnalogTransmissionEngineSoundManager {
-    private static final int SCAN_INTERVAL = 20;
-    private static final int SCAN_RADIUS = 32;
+    private static final int SCAN_RADIUS = 80;
 
-    private static final Map<BlockPos, EnumMap<FerrariSample, FerrariEngineSoundInstance>> ACTIVE_SOUNDS = new HashMap<>();
+    private static final Map<AnalogTransmissionBlockEntity, EnumMap<FerrariSample, FerrariEngineSoundInstance>> ACTIVE_SOUNDS = new HashMap<>();
     private static ClientLevel activeLevel;
-    private static int scanCooldown;
-    private static int debugCooldown;
 
     public static void tick(final ClientLevel level, final LocalPlayer player) {
         if (activeLevel != level) {
             ACTIVE_SOUNDS.clear();
+            AnalogTransmissionAudioRegistry.clear();
             activeLevel = level;
-            scanCooldown = 0;
-            debugCooldown = 0;
         }
 
         cleanupStoppedSounds();
-        debugNearestTransmission(level, player);
-
-        if (scanCooldown-- > 0) {
-            return;
-        }
-        scanCooldown = SCAN_INTERVAL;
-
-        final BlockPos center = player.blockPosition();
-        final BlockPos min = center.offset(-SCAN_RADIUS, -SCAN_RADIUS, -SCAN_RADIUS);
-        final BlockPos max = center.offset(SCAN_RADIUS, SCAN_RADIUS, SCAN_RADIUS);
-
-        for (final BlockPos pos : BlockPos.betweenClosed(min, max)) {
-            final BlockEntity blockEntity = level.getBlockEntity(pos);
-            if (!(blockEntity instanceof AnalogTransmissionBlockEntity analogTransmission)) {
-                continue;
+        for (final AnalogTransmissionBlockEntity analogTransmission : AnalogTransmissionAudioRegistry.snapshot()) {
+            if (analogTransmission.getFerrariEngineRpm() > 0.0f) {
+                playEngine(level, analogTransmission);
             }
-            if (analogTransmission.getFerrariEngineRpm() <= 0.0f) {
-                continue;
-            }
-
-            playEngine(level, pos.immutable());
         }
     }
 
-    private static void debugNearestTransmission(final ClientLevel level, final LocalPlayer player) {
-        if (debugCooldown-- > 0) {
-            return;
-        }
-        debugCooldown = 20;
-
-        final BlockPos center = player.blockPosition();
-        final BlockPos min = center.offset(-SCAN_RADIUS, -SCAN_RADIUS, -SCAN_RADIUS);
-        final BlockPos max = center.offset(SCAN_RADIUS, SCAN_RADIUS, SCAN_RADIUS);
-        AnalogTransmissionBlockEntity nearest = null;
-        double nearestDistance = Double.MAX_VALUE;
-
-        for (final BlockPos pos : BlockPos.betweenClosed(min, max)) {
-            final BlockEntity blockEntity = level.getBlockEntity(pos);
-            if (!(blockEntity instanceof AnalogTransmissionBlockEntity analogTransmission)) {
-                continue;
-            }
-
-            final double distance = player.distanceToSqr(Vec3.atCenterOf(pos));
-            if (distance < nearestDistance) {
-                nearest = analogTransmission;
-                nearestDistance = distance;
-            }
-        }
-
-        if (nearest == null) {
-            player.displayClientMessage(Component.literal("[Analog Transmission Audio] no block within " + SCAN_RADIUS + " blocks"), false);
-            return;
-        }
-
-        player.displayClientMessage(Component.literal(String.format(Locale.ROOT,
-                "[Analog Transmission Audio] pos=%s signal=%d cmdGear=%d gear=%d audioGear=%d power=%.2f throttle=%.2f brake=%.2f rpm=%.2f theta=%.3f omega=%.3f driveTheta=%.3f driveOmega=%.3f",
-                nearest.getBlockPos().toShortString(),
-                nearest.getSignal(),
-                nearest.getFerrariEngineGear(),
-                nearest.getFerrariEngagedGear(),
-                nearest.getFerrariAudioGear(),
-                nearest.getFerrariEnginePowerInput(),
-                nearest.getFerrariAudioThrottle(),
-                nearest.getFerrariBrake(),
-                nearest.getFerrariEngineRpm(),
-                nearest.getFerrariEngineTheta(),
-                nearest.getFerrariEngineOmega(),
-                nearest.getFerrariDrivetrainTheta(),
-                nearest.getFerrariDrivetrainOmega()
-        )), false);
-    }
-
-    private static void playEngine(final ClientLevel level, final BlockPos pos) {
+    private static void playEngine(final ClientLevel level, final AnalogTransmissionBlockEntity analogTransmission) {
         final Minecraft minecraft = Minecraft.getInstance();
         final EnumMap<FerrariSample, FerrariEngineSoundInstance> samples =
-                ACTIVE_SOUNDS.computeIfAbsent(pos, key -> new EnumMap<>(FerrariSample.class));
+                ACTIVE_SOUNDS.computeIfAbsent(analogTransmission, key -> new EnumMap<>(FerrariSample.class));
 
         for (final FerrariSample sample : FerrariSample.values()) {
             final FerrariEngineSoundInstance sound = samples.computeIfAbsent(sample,
-                    key -> new FerrariEngineSoundInstance(level, pos, key.event.event(), level.getRandom(), key));
+                    key -> new FerrariEngineSoundInstance(analogTransmission, key.event.event(), level.getRandom(), key));
 
             if (!minecraft.getSoundManager().isActive(sound)) {
                 minecraft.getSoundManager().play(sound);
@@ -129,15 +57,30 @@ public class AnalogTransmissionEngineSoundManager {
 
     private static void cleanupStoppedSounds() {
         final Minecraft minecraft = Minecraft.getInstance();
-        final Iterator<Map.Entry<BlockPos, EnumMap<FerrariSample, FerrariEngineSoundInstance>>> iterator = ACTIVE_SOUNDS.entrySet().iterator();
+        final Iterator<Map.Entry<AnalogTransmissionBlockEntity, EnumMap<FerrariSample, FerrariEngineSoundInstance>>> iterator = ACTIVE_SOUNDS.entrySet().iterator();
 
         while (iterator.hasNext()) {
-            final Map.Entry<BlockPos, EnumMap<FerrariSample, FerrariEngineSoundInstance>> entry = iterator.next();
+            final Map.Entry<AnalogTransmissionBlockEntity, EnumMap<FerrariSample, FerrariEngineSoundInstance>> entry = iterator.next();
+            final AnalogTransmissionBlockEntity analogTransmission = entry.getKey();
+            if (analogTransmission == null || analogTransmission.isRemoved() || analogTransmission.getLevel() == null) {
+                iterator.remove();
+                continue;
+            }
+
             entry.getValue().values().removeIf(sound -> sound.isStopped() || !minecraft.getSoundManager().isActive(sound));
             if (entry.getValue().isEmpty()) {
                 iterator.remove();
             }
         }
+    }
+
+    private static Vec3 getSoundPosition(final AnalogTransmissionBlockEntity analogTransmission) {
+        final Vec3 localCenter = Vec3.atCenterOf(analogTransmission.getBlockPos());
+        if (analogTransmission.getLevel() == null) {
+            return localCenter;
+        }
+
+        return Sable.HELPER.projectOutOfSubLevel(analogTransmission.getLevel(), localCenter);
     }
 
     private enum FerrariSample {
@@ -162,40 +105,46 @@ public class AnalogTransmissionEngineSoundManager {
         private static final float SOFT_LIMITER_RPM = 8800.0f;
         private static final float LIMITER_RPM = 8900.0f;
         private static final float RPM_PITCH_FACTOR = 0.2f;
+        private static final float ENGINE_VOLUME_SCALE = 0.4f;
 
-        private final ClientLevel level;
-        private final BlockPos pos;
+        private final AnalogTransmissionBlockEntity analogTransmission;
         private final FerrariSample sample;
         private int inactiveTicks;
 
-        protected FerrariEngineSoundInstance(final ClientLevel level, final BlockPos pos, final SoundEvent event,
+        protected FerrariEngineSoundInstance(final AnalogTransmissionBlockEntity analogTransmission, final SoundEvent event,
                                              final RandomSource random, final FerrariSample sample) {
             super(event, SoundSource.BLOCKS, random);
-            this.level = level;
-            this.pos = pos;
+            this.analogTransmission = analogTransmission;
             this.sample = sample;
             this.looping = true;
             this.delay = 0;
             this.attenuation = SoundInstance.Attenuation.LINEAR;
-            this.x = pos.getX() + 0.5;
-            this.y = pos.getY() + 0.5;
-            this.z = pos.getZ() + 0.5;
+            this.relative = false;
+            final Vec3 soundPosition = getSoundPosition(analogTransmission);
+            this.x = soundPosition.x;
+            this.y = soundPosition.y;
+            this.z = soundPosition.z;
             this.volume = 0.001f;
         }
 
         @Override
         public void tick() {
-            final BlockEntity blockEntity = this.level.getBlockEntity(this.pos);
-            if (!(blockEntity instanceof AnalogTransmissionBlockEntity analogTransmission) || analogTransmission.isRemoved()) {
+            final AnalogTransmissionBlockEntity analogTransmission = this.analogTransmission;
+            if (analogTransmission == null || analogTransmission.isRemoved() || analogTransmission.getLevel() == null) {
                 this.stop();
                 return;
             }
+
+            final Vec3 soundPosition = getSoundPosition(analogTransmission);
+            this.x = soundPosition.x;
+            this.y = soundPosition.y;
+            this.z = soundPosition.z;
 
             final float rpm = analogTransmission.getFerrariEngineRpm();
             final float throttle = analogTransmission.getFerrariAudioThrottle();
 
             final LocalPlayer player = Minecraft.getInstance().player;
-            if (player == null || player.distanceToSqr(Vec3.atCenterOf(this.pos)) > Mth.square(SCAN_RADIUS + 8.0f)) {
+            if (player == null || player.distanceToSqr(soundPosition) > Mth.square(SCAN_RADIUS + 8.0f)) {
                 this.stop();
                 return;
             }
@@ -210,7 +159,7 @@ public class AnalogTransmissionEngineSoundManager {
 
             this.inactiveTicks = 0;
             this.pitch = getRpmPitch(rpm, this.sample.sampleRpm);
-            this.volume = getSampleGain(this.sample, rpm, throttle) * 0.08f;
+            this.volume = getSampleGain(this.sample, rpm, throttle) * ENGINE_VOLUME_SCALE;
         }
 
         private static float getSampleGain(final FerrariSample sample, final float rpm, final float throttle) {
