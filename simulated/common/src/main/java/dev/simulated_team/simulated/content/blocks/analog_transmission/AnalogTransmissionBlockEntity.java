@@ -16,6 +16,7 @@ import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
+import net.minecraft.util.Mth;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.level.block.entity.BlockEntityType;
@@ -31,6 +32,21 @@ import static net.minecraft.ChatFormatting.GOLD;
  * The parent BlockEntity class. implements {@link ExtraKinetics ExtraKinetics} to allow multi-kinetic functionality
  */
 public class AnalogTransmissionBlockEntity extends KineticBlockEntity implements ExtraKinetics {
+    private static final float FERRARI_IDLE_RPM = 1000.0f;
+    private static final float FERRARI_LIMITER_RPM = 8900.0f;
+    private static final float FERRARI_SOFT_LIMITER_RPM = 8800.0f;
+    private static final float FERRARI_FULL_THROTTLE_POWER = 32.0f;
+    private static final float FERRARI_ENGINE_INERTIA = 0.8f;
+    private static final float FERRARI_DRIVETRAIN_INERTIA = 0.15f;
+    private static final float FERRARI_DRIVETRAIN_DAMPING = 6.0f;
+    private static final float FERRARI_TORQUE = 400.0f;
+    private static final float FERRARI_ENGINE_BRAKING = 200.0f;
+    private static final float FERRARI_BRAKE_IMPULSE = 0.3f;
+    private static final float FERRARI_DRIVETRAIN_COAST_DRAG = 0.08f;
+    private static final float FERRARI_FINAL_DRIVE = 3.44f;
+    private static final float[] FERRARI_GEAR_RATIOS = {
+            3.4f, 2.36f, 1.85f, 1.47f, 1.24f, 1.07f, 0.92f, 0.78f
+    };
 
     /**
      * The ExtraKinetic BlockEntity associated with the AnalogTransmission
@@ -38,6 +54,20 @@ public class AnalogTransmissionBlockEntity extends KineticBlockEntity implements
     private final AnalogTransmissionCogwheel extraWheel;
 
     private int signal = 0;
+    private int ferrariEngagedGear = 0;
+    private int ferrariPendingGear = 0;
+    private int ferrariShiftTicks = 0;
+    private float ferrariShiftRatioRatio = 0.0f;
+    private boolean ferrariDownShift = false;
+    private float ferrariEngineThrottle = 0.0f;
+    private float ferrariEngineTheta = 0.0f;
+    private float ferrariEngineOmega = 0.0f;
+    private float ferrariEnginePreviousTheta = 0.0f;
+    private float ferrariEnginePreviousOmega = 0.0f;
+    private float ferrariDrivetrainTheta = 0.0f;
+    private float ferrariDrivetrainOmega = 0.0f;
+    private float ferrariDrivetrainPreviousTheta = 0.0f;
+    private float ferrariDrivetrainPreviousOmega = 0.0f;
 
 
     /**
@@ -91,6 +121,7 @@ public class AnalogTransmissionBlockEntity extends KineticBlockEntity implements
             this.alreadySentEffects = false;
         }
 
+        this.updateFerrariEngineDebugState();
         this.extraWheel.tick();
         super.tick();
     }
@@ -98,6 +129,245 @@ public class AnalogTransmissionBlockEntity extends KineticBlockEntity implements
     @VisibleForTesting
     public float getRotationModifier() {
         return 1 - (this.signal + 1) / 16f;
+    }
+
+    public int getSignal() {
+        return this.signal;
+    }
+
+    public int getFerrariEngineGear() {
+        return Mth.clamp(this.signal - 7, 0, 8);
+    }
+
+    public int getFerrariEngagedGear() {
+        return this.ferrariEngagedGear;
+    }
+
+    public int getFerrariAudioGear() {
+        return Mth.clamp(this.ferrariEngagedGear, 0, 6);
+    }
+
+    public float getFerrariEnginePowerInput() {
+        final float shaftSpeed = this.getSpeed();
+        final float cogSpeed = this.extraWheel.getSpeed();
+
+        return Math.abs(cogSpeed) > Math.abs(shaftSpeed) ? cogSpeed : shaftSpeed;
+    }
+
+    public float getFerrariThrottle() {
+        return Mth.clamp(this.getFerrariEnginePowerInput() / FERRARI_FULL_THROTTLE_POWER, 0.0f, 1.0f);
+    }
+
+    public float getFerrariBrake() {
+        return Mth.clamp(-this.getFerrariEnginePowerInput() / FERRARI_FULL_THROTTLE_POWER, 0.0f, 1.0f);
+    }
+
+    public float getFerrariAudioThrottle() {
+        return this.ferrariEngineThrottle;
+    }
+
+    public float getFerrariEngineRpm() {
+        final float rpm = this.ferrariEngineOmegaToRpm(this.ferrariEngineOmega);
+        if (rpm < 0.01f) {
+            return 0.0f;
+        }
+
+        return rpm;
+    }
+
+    public float getFerrariEngineTheta() {
+        return this.ferrariEngineTheta;
+    }
+
+    public float getFerrariEngineOmega() {
+        return this.ferrariEngineOmega;
+    }
+
+    public float getFerrariEnginePreviousOmega() {
+        return this.ferrariEnginePreviousOmega;
+    }
+
+    public float getFerrariDrivetrainTheta() {
+        return this.ferrariDrivetrainTheta;
+    }
+
+    public float getFerrariDrivetrainOmega() {
+        return this.ferrariDrivetrainOmega;
+    }
+
+    public float getFerrariDrivetrainPreviousOmega() {
+        return this.ferrariDrivetrainPreviousOmega;
+    }
+
+    private void updateFerrariEngineDebugState() {
+        this.updateFerrariGearshift();
+
+        final float powerInput = this.getFerrariEnginePowerInput();
+        this.ferrariEngineThrottle = this.ferrariDownShift ? Math.max(this.getFerrariThrottle(), 0.8f) : this.getFerrariThrottle();
+        final float brake = this.getFerrariBrake();
+
+        if (brake > 0.0f) {
+            this.ferrariDrivetrainOmega = Math.max(0.0f, this.ferrariDrivetrainOmega - FERRARI_BRAKE_IMPULSE * brake);
+        }
+        if (this.ferrariEngineThrottle < 0.01f && brake < 0.01f) {
+            this.ferrariDrivetrainOmega *= 1.0f - FERRARI_DRIVETRAIN_COAST_DRAG;
+        }
+
+        final float dt = 1.0f / 20.0f;
+        final int subSteps = 20;
+        final float h = dt / subSteps;
+
+        for (int i = 0; i < subSteps; i++) {
+            this.integrateFerrariEngine(h);
+            this.integrateFerrariDrivetrain(h);
+
+            this.solveFerrariEnginePosition(h);
+            this.solveFerrariDrivetrainPosition(h);
+
+            this.updateFerrariEngineVelocity(h);
+            this.updateFerrariDrivetrainVelocity(h);
+
+            this.solveFerrariEngineVelocity(h);
+            this.solveFerrariDrivetrainVelocity(h);
+        }
+
+        if (Math.abs(powerInput) < 0.01f && this.ferrariEngineOmega < 0.01f) {
+            this.ferrariEngineOmega = 0.0f;
+        }
+    }
+
+    private void updateFerrariGearshift() {
+        final int commandGear = this.getFerrariEngineGear();
+        if (commandGear != this.ferrariPendingGear) {
+            final float prevRatio = this.getFerrariGearRatio(this.ferrariEngagedGear);
+            final float nextRatio = this.getFerrariGearRatio(commandGear);
+            final float ratioRatio = prevRatio > 0.0f ? nextRatio / prevRatio : 0.0f;
+
+            this.ferrariPendingGear = commandGear;
+            this.ferrariShiftTicks = 1;
+            this.ferrariEngagedGear = 0;
+            this.ferrariShiftRatioRatio = ratioRatio;
+            this.ferrariDownShift = ratioRatio > 1.0f;
+            return;
+        }
+
+        if (this.ferrariShiftTicks <= 0) {
+            return;
+        }
+
+        this.ferrariShiftTicks--;
+        if (this.ferrariShiftTicks > 0) {
+            return;
+        }
+
+        this.ferrariEngagedGear = this.ferrariPendingGear;
+        this.ferrariDownShift = false;
+        if (this.ferrariEngagedGear > 0) {
+            this.ferrariDrivetrainOmega *= this.ferrariShiftRatioRatio;
+        }
+    }
+
+    private void integrateFerrariEngine(final float dt) {
+        float throttle = this.ferrariEngineThrottle;
+        final float rpm = this.ferrariEngineOmegaToRpm(this.ferrariEngineOmega);
+        if (rpm >= FERRARI_SOFT_LIMITER_RPM) {
+            final float limiterRatio = Mth.clamp((rpm - FERRARI_SOFT_LIMITER_RPM) / (FERRARI_LIMITER_RPM - FERRARI_SOFT_LIMITER_RPM), 0.0f, 1.0f);
+            throttle *= Math.pow(1.0f - limiterRatio, 0.05f);
+        }
+        if (rpm >= FERRARI_LIMITER_RPM) {
+            throttle = 0.0f;
+        }
+
+        float idleTorque = 0.0f;
+        if (throttle < 0.1f && rpm < FERRARI_IDLE_RPM * 1.5f) {
+            final float idleRatio = Mth.clamp((rpm - FERRARI_IDLE_RPM * 0.9f) / (FERRARI_IDLE_RPM * 0.1f), 0.0f, 1.0f);
+            idleTorque = (1.0f - idleRatio) * FERRARI_ENGINE_BRAKING * 10.0f;
+        }
+
+        final float throttleTorque = (float) Math.pow(throttle, 1.2f) * FERRARI_TORQUE;
+        final float engineBrakeTorque = (float) Math.pow(1.0f - throttle, 1.2f) * FERRARI_ENGINE_BRAKING;
+        final float torque = throttleTorque - engineBrakeTorque + idleTorque;
+
+        this.ferrariEnginePreviousTheta = this.ferrariEngineTheta;
+        this.ferrariEngineOmega += torque / FERRARI_ENGINE_INERTIA * dt;
+        this.ferrariEngineTheta += this.ferrariEngineOmega * dt;
+    }
+
+    private void integrateFerrariDrivetrain(final float dt) {
+        this.ferrariDrivetrainPreviousTheta = this.ferrariDrivetrainTheta;
+        this.ferrariDrivetrainTheta += this.ferrariDrivetrainOmega * dt;
+    }
+
+    private void solveFerrariEnginePosition(final float h) {
+        if (this.ferrariEngagedGear == 0) {
+            return;
+        }
+
+        final float compliance = Math.max(0.0006f - 0.00015f * this.ferrariEngagedGear, 0.00007f);
+        final float correction = this.ferrariDrivetrainTheta - this.ferrariEngineTheta;
+        this.ferrariEngineTheta += this.getFerrariEngineCorrection(correction, h, compliance) * Math.signum(correction);
+    }
+
+    private void solveFerrariDrivetrainPosition(final float h) {
+        final float correction = this.ferrariEngineTheta - this.ferrariDrivetrainTheta;
+        this.ferrariDrivetrainTheta += this.getFerrariDrivetrainCorrection(correction, h, 0.01f) * Math.signum(correction);
+    }
+
+    private void updateFerrariEngineVelocity(final float h) {
+        this.ferrariEnginePreviousOmega = this.ferrariEngineOmega;
+        this.ferrariEngineOmega = (this.ferrariEngineTheta - this.ferrariEnginePreviousTheta) / h;
+    }
+
+    private void updateFerrariDrivetrainVelocity(final float h) {
+        this.ferrariDrivetrainPreviousOmega = this.ferrariDrivetrainOmega;
+        this.ferrariDrivetrainOmega = (this.ferrariDrivetrainTheta - this.ferrariDrivetrainPreviousTheta) / h;
+    }
+
+    private void solveFerrariEngineVelocity(final float h) {
+        float damping = 12.0f;
+        if (this.ferrariEngagedGear > 3) {
+            damping = 9.0f;
+        }
+
+        this.ferrariEngineOmega += (this.ferrariDrivetrainOmega - this.ferrariEngineOmega) * damping * h;
+    }
+
+    private void solveFerrariDrivetrainVelocity(final float h) {
+        float damping = FERRARI_DRIVETRAIN_DAMPING;
+        if (this.ferrariEngagedGear > 3) {
+            damping = FERRARI_DRIVETRAIN_DAMPING * 0.75f;
+        }
+
+        this.ferrariDrivetrainOmega += (this.ferrariEngineOmega - this.ferrariDrivetrainOmega) * damping * h;
+    }
+
+    private float getFerrariEngineCorrection(final float correction, final float h, final float compliance) {
+        final float w = correction * correction / FERRARI_ENGINE_INERTIA;
+        final float lambda = -correction / (w + compliance / h / h);
+        return correction * -lambda;
+    }
+
+    private float getFerrariDrivetrainCorrection(final float correction, final float h, final float compliance) {
+        final float w = correction * correction / FERRARI_DRIVETRAIN_INERTIA;
+        final float lambda = -correction / (w + compliance / h / h);
+        return correction * -lambda;
+    }
+
+    private float getFerrariGearRatio(final int gear) {
+        if (gear <= 0) {
+            return 0.0f;
+        }
+
+        final int index = Mth.clamp(gear, 1, FERRARI_GEAR_RATIOS.length) - 1;
+        return FERRARI_GEAR_RATIOS[index];
+    }
+
+    private float getFerrariTotalGearRatio(final int gear) {
+        return this.getFerrariGearRatio(gear) * FERRARI_FINAL_DRIVE;
+    }
+
+    private float ferrariEngineOmegaToRpm(final float omega) {
+        return 60.0f * omega / 2.0f * (float) Math.PI;
     }
 
     /**

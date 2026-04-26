@@ -78,6 +78,26 @@ public class SimSoundEvents {
                 .subtitle("Portable Engine roars")
                 .addEventVariant(SoundEvents.FIRECHARGE_USE)),
 
+        ANALOG_TRANSMISSION_FERRARI_458_ON_LOW = REGISTRY.create("block.analog_transmission.ferrari_458.on_low", definition -> definition
+                .subtitle("Analog Transmission engine revs")
+                .addFileVariant("block/analog_transmission/ferrari_458/on_low")),
+
+        ANALOG_TRANSMISSION_FERRARI_458_ON_HIGH = REGISTRY.create("block.analog_transmission.ferrari_458.on_high", definition -> definition
+                .defaultSubtitle("simulated.subtitle.block.analog_transmission.ferrari_458.on_low")
+                .addFileVariant("block/analog_transmission/ferrari_458/on_high")),
+
+        ANALOG_TRANSMISSION_FERRARI_458_OFF_LOW = REGISTRY.create("block.analog_transmission.ferrari_458.off_low", definition -> definition
+                .defaultSubtitle("simulated.subtitle.block.analog_transmission.ferrari_458.on_low")
+                .addFileVariant("block/analog_transmission/ferrari_458/off_low")),
+
+        ANALOG_TRANSMISSION_FERRARI_458_OFF_HIGH = REGISTRY.create("block.analog_transmission.ferrari_458.off_high", definition -> definition
+                .defaultSubtitle("simulated.subtitle.block.analog_transmission.ferrari_458.on_low")
+                .addFileVariant("block/analog_transmission/ferrari_458/off_high")),
+
+        ANALOG_TRANSMISSION_FERRARI_458_LIMITER = REGISTRY.create("block.analog_transmission.ferrari_458.limiter", definition -> definition
+                .defaultSubtitle("simulated.subtitle.block.analog_transmission.ferrari_458.on_low")
+                .addFileVariant("block/analog_transmission/ferrari_458/limiter")),
+
         AUGER_SHAFT_ENCASING = REGISTRY.create("block.auger_shaft.encase", definition -> definition
                 .subtitle("Encasing Auger Shaft")
                 .addEventVariant(SoundEvents.NETHERITE_BLOCK_HIT)),

@@ -15,6 +15,36 @@
     ],
     "subtitle": "simulated.subtitle.block.auger_shaft.encase"
   },
+  "block.analog_transmission.ferrari_458.limiter": {
+    "sounds": [
+      "simulated:block/analog_transmission/ferrari_458/limiter"
+    ],
+    "subtitle": "simulated.subtitle.block.analog_transmission.ferrari_458.on_low"
+  },
+  "block.analog_transmission.ferrari_458.off_high": {
+    "sounds": [
+      "simulated:block/analog_transmission/ferrari_458/off_high"
+    ],
+    "subtitle": "simulated.subtitle.block.analog_transmission.ferrari_458.on_low"
+  },
+  "block.analog_transmission.ferrari_458.off_low": {
+    "sounds": [
+      "simulated:block/analog_transmission/ferrari_458/off_low"
+    ],
+    "subtitle": "simulated.subtitle.block.analog_transmission.ferrari_458.on_low"
+  },
+  "block.analog_transmission.ferrari_458.on_high": {
+    "sounds": [
+      "simulated:block/analog_transmission/ferrari_458/on_high"
+    ],
+    "subtitle": "simulated.subtitle.block.analog_transmission.ferrari_458.on_low"
+  },
+  "block.analog_transmission.ferrari_458.on_low": {
+    "sounds": [
+      "simulated:block/analog_transmission/ferrari_458/on_low"
+    ],
+    "subtitle": "simulated.subtitle.block.analog_transmission.ferrari_458.on_low"
+  },
   "block.docking_connector.dock": {
     "sounds": [
       "simulated:block/docking_connector/dock_1",
