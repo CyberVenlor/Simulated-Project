@@ -1,15 +1,22 @@
 package dev.simulated_team.simulated.content.blocks.analog_transmission;
 
+import java.util.List;
+
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.VisibleForTesting;
+
 import com.simibubi.create.content.kinetics.base.IRotate;
 import com.simibubi.create.content.kinetics.base.KineticBlockEntity;
 import com.simibubi.create.content.kinetics.simpleRelays.ICogWheel;
 import com.simibubi.create.foundation.item.TooltipHelper;
 import com.simibubi.create.infrastructure.config.AllConfigs;
+
 import dev.simulated_team.simulated.data.SimLang;
 import dev.simulated_team.simulated.mixin_interface.extra_kinetics.KineticBlockEntityExtension;
 import dev.simulated_team.simulated.util.extra_kinetics.ExtraBlockPos;
 import dev.simulated_team.simulated.util.extra_kinetics.ExtraKinetics;
 import net.createmod.catnip.lang.FontHelper;
+import static net.minecraft.ChatFormatting.GOLD;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.HolderLookup;
@@ -21,12 +28,6 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.VisibleForTesting;
-
-import java.util.List;
-
-import static net.minecraft.ChatFormatting.GOLD;
 
 /**
  * The parent BlockEntity class. implements {@link ExtraKinetics ExtraKinetics} to allow multi-kinetic functionality
@@ -200,9 +201,10 @@ public class AnalogTransmissionBlockEntity extends KineticBlockEntity implements
             this.ferrariEngine.throttle = 0.8;
         } else {
             if (this.getFerrariEnginePowerInput() > 0.01f) {
-                this.ferrariEngine.throttle = clamp(this.ferrariEngine.throttle + 0.2, 0.0, 1.0);
+                this.ferrariEngine.throttle = clamp(this.ferrariEngine.throttle + 0.4, 0.0, 1.0);
             } else {
-                this.ferrariEngine.throttle = clamp(this.ferrariEngine.throttle - 0.35, 0.0, 1.0);
+                this.ferrariEngine.throttle = clamp(this.ferrariEngine.throttle - 1.0, 0.0, 1.0);
+                this.ferrariDrivetrain.omega -= 0.3;
             }
         }
 
