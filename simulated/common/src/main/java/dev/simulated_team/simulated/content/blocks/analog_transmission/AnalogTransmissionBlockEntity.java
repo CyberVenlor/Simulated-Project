@@ -45,7 +45,7 @@ public class AnalogTransmissionBlockEntity extends KineticBlockEntity implements
     private int ferrariShiftTicks = -1;
     private double ferrariShiftRatioRatio = 0.0;
     private int ferrariShiftTargetGear = 0;
-    private double ferrariTime = 0.0;
+    private double ferrariTimeMs = 0.0;
 
 
     /**
@@ -213,7 +213,7 @@ public class AnalogTransmissionBlockEntity extends KineticBlockEntity implements
         final double loadInertia = this.ferrariGetLoadInertia() * 0.00;
 
         for (int i = 0; i < subSteps; i++) {
-            this.ferrariEngine.integrate(loadInertia, this.ferrariTime + dt * i, h);
+            this.ferrariEngine.integrate(loadInertia, this.ferrariTimeMs + dt * i, h);
             this.ferrariDrivetrain.integrate(h);
             this.ferrariEngine.solvePos(this.ferrariDrivetrain, h);
             this.ferrariDrivetrain.solvePos(this.ferrariEngine, h);
@@ -223,7 +223,7 @@ public class AnalogTransmissionBlockEntity extends KineticBlockEntity implements
             this.ferrariDrivetrain.solveVel(this.ferrariEngine, h);
         }
 
-        this.ferrariTime += dt;
+        this.ferrariTimeMs += dt * 1000.0;
     }
 
     private double ferrariGetLoadInertia() {
