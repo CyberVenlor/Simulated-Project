@@ -244,5 +244,65 @@
       "simulated:block/plunger/break_4"
     ],
     "subtitle": "simulated.subtitle.item.plunger_launcher.release"
+  },
+  "block.analog_transmission.bac_mono.limiter": {
+    "sounds": [
+      "simulated:block/analog_transmission/bac_mono/limiter"
+    ],
+    "subtitle": "simulated.subtitle.block.analog_transmission.ferrari_458.on_low"
+  },
+  "block.analog_transmission.bac_mono.off_high": {
+    "sounds": [
+      "simulated:block/analog_transmission/bac_mono/off_high"
+    ],
+    "subtitle": "simulated.subtitle.block.analog_transmission.ferrari_458.on_low"
+  },
+  "block.analog_transmission.bac_mono.off_low": {
+    "sounds": [
+      "simulated:block/analog_transmission/bac_mono/off_low"
+    ],
+    "subtitle": "simulated.subtitle.block.analog_transmission.ferrari_458.on_low"
+  },
+  "block.analog_transmission.bac_mono.on_high": {
+    "sounds": [
+      "simulated:block/analog_transmission/bac_mono/on_high"
+    ],
+    "subtitle": "simulated.subtitle.block.analog_transmission.ferrari_458.on_low"
+  },
+  "block.analog_transmission.bac_mono.on_low": {
+    "sounds": [
+      "simulated:block/analog_transmission/bac_mono/on_low"
+    ],
+    "subtitle": "simulated.subtitle.block.analog_transmission.ferrari_458.on_low"
+  },
+  "block.analog_transmission.procar.limiter": {
+    "sounds": [
+      "simulated:block/analog_transmission/procar/limiter"
+    ],
+    "subtitle": "simulated.subtitle.block.analog_transmission.ferrari_458.on_low"
+  },
+  "block.analog_transmission.procar.off_high": {
+    "sounds": [
+      "simulated:block/analog_transmission/procar/off_high"
+    ],
+    "subtitle": "simulated.subtitle.block.analog_transmission.ferrari_458.on_low"
+  },
+  "block.analog_transmission.procar.off_low": {
+    "sounds": [
+      "simulated:block/analog_transmission/procar/off_low"
+    ],
+    "subtitle": "simulated.subtitle.block.analog_transmission.ferrari_458.on_low"
+  },
+  "block.analog_transmission.procar.on_high": {
+    "sounds": [
+      "simulated:block/analog_transmission/procar/on_high"
+    ],
+    "subtitle": "simulated.subtitle.block.analog_transmission.ferrari_458.on_low"
+  },
+  "block.analog_transmission.procar.on_low": {
+    "sounds": [
+      "simulated:block/analog_transmission/procar/on_low"
+    ],
+    "subtitle": "simulated.subtitle.block.analog_transmission.ferrari_458.on_low"
   }
 }

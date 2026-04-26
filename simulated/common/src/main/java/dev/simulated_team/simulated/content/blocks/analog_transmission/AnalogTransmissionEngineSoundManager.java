@@ -24,6 +24,7 @@ public class AnalogTransmissionEngineSoundManager {
 
     private static final Map<AnalogTransmissionBlockEntity, EnumMap<FerrariSample, FerrariEngineSoundInstance>> ACTIVE_SOUNDS = new HashMap<>();
     private static ClientLevel activeLevel;
+    private static AudioProfile activeProfile = AudioProfile.BAC_MONO;
 
     public static void tick(final ClientLevel level, final LocalPlayer player) {
         if (activeLevel != level) {
@@ -46,13 +47,41 @@ public class AnalogTransmissionEngineSoundManager {
                 ACTIVE_SOUNDS.computeIfAbsent(analogTransmission, key -> new EnumMap<>(FerrariSample.class));
 
         for (final FerrariSample sample : FerrariSample.values()) {
+            final SampleSettings settings = activeProfile.get(sample);
             final FerrariEngineSoundInstance sound = samples.computeIfAbsent(sample,
-                    key -> new FerrariEngineSoundInstance(analogTransmission, key.event.event(), level.getRandom(), key));
+                    key -> new FerrariEngineSoundInstance(analogTransmission, settings.event.event(), level.getRandom(), key, settings));
 
             if (!minecraft.getSoundManager().isActive(sound)) {
                 minecraft.getSoundManager().play(sound);
             }
         }
+    }
+
+    public static AudioProfile getActiveProfile() {
+        return activeProfile;
+    }
+
+    public static boolean setActiveProfile(final String id) {
+        for (final AudioProfile profile : AudioProfile.values()) {
+            if (profile.id.equals(id)) {
+                setActiveProfile(profile);
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    public static void setActiveProfile(final AudioProfile profile) {
+        if (activeProfile == profile) {
+            return;
+        }
+
+        activeProfile = profile;
+        for (final EnumMap<FerrariSample, FerrariEngineSoundInstance> samples : ACTIVE_SOUNDS.values()) {
+            samples.values().forEach(FerrariEngineSoundInstance::stopFromManager);
+        }
+        ACTIVE_SOUNDS.clear();
     }
 
     private static void cleanupStoppedSounds() {
@@ -83,22 +112,64 @@ public class AnalogTransmissionEngineSoundManager {
         return Sable.HELPER.projectOutOfSubLevel(analogTransmission.getLevel(), localCenter);
     }
 
-    private enum FerrariSample {
-        ON_LOW(SimSoundEvents.ANALOG_TRANSMISSION_FERRARI_458_ON_LOW, 5300.0f, 1.5f),
-        ON_HIGH(SimSoundEvents.ANALOG_TRANSMISSION_FERRARI_458_ON_HIGH, 7700.0f, 2.5f),
-        OFF_LOW(SimSoundEvents.ANALOG_TRANSMISSION_FERRARI_458_OFF_LOW, 6900.0f, 1.4f),
-        OFF_HIGH(SimSoundEvents.ANALOG_TRANSMISSION_FERRARI_458_OFF_HIGH, 7900.0f, 1.6f),
-        LIMITER(SimSoundEvents.ANALOG_TRANSMISSION_FERRARI_458_LIMITER, 8900.0f, 1.8f);
+    public enum AudioProfile {
+        BAC_MONO("bac_mono", "BAC Mono",
+                new SampleSettings(SimSoundEvents.ANALOG_TRANSMISSION_BAC_MONO_ON_LOW, 1000.0f, 0.5f),
+                new SampleSettings(SimSoundEvents.ANALOG_TRANSMISSION_BAC_MONO_ON_HIGH, 1000.0f, 0.5f),
+                new SampleSettings(SimSoundEvents.ANALOG_TRANSMISSION_BAC_MONO_OFF_LOW, 1000.0f, 0.5f),
+                new SampleSettings(SimSoundEvents.ANALOG_TRANSMISSION_BAC_MONO_OFF_HIGH, 1000.0f, 0.5f),
+                new SampleSettings(SimSoundEvents.ANALOG_TRANSMISSION_BAC_MONO_LIMITER, 8000.0f, 0.4f)),
+        FERRARI_458("ferrari_458", "Ferrari 458",
+                new SampleSettings(SimSoundEvents.ANALOG_TRANSMISSION_FERRARI_458_ON_LOW, 5300.0f, 1.5f),
+                new SampleSettings(SimSoundEvents.ANALOG_TRANSMISSION_FERRARI_458_ON_HIGH, 7700.0f, 2.5f),
+                new SampleSettings(SimSoundEvents.ANALOG_TRANSMISSION_FERRARI_458_OFF_LOW, 6900.0f, 1.4f),
+                new SampleSettings(SimSoundEvents.ANALOG_TRANSMISSION_FERRARI_458_OFF_HIGH, 7900.0f, 1.6f),
+                new SampleSettings(SimSoundEvents.ANALOG_TRANSMISSION_FERRARI_458_LIMITER, 8900.0f, 1.8f)),
+        PROCAR("procar", "Procar",
+                new SampleSettings(SimSoundEvents.ANALOG_TRANSMISSION_PROCAR_ON_LOW, 3200.0f, 1.0f),
+                new SampleSettings(SimSoundEvents.ANALOG_TRANSMISSION_PROCAR_ON_HIGH, 8000.0f, 1.0f),
+                new SampleSettings(SimSoundEvents.ANALOG_TRANSMISSION_PROCAR_OFF_LOW, 3400.0f, 1.3f),
+                new SampleSettings(SimSoundEvents.ANALOG_TRANSMISSION_PROCAR_OFF_HIGH, 8430.0f, 1.3f),
+                new SampleSettings(SimSoundEvents.ANALOG_TRANSMISSION_PROCAR_LIMITER, 8000.0f, 0.5f));
 
-        private final SimSoundEntry event;
-        private final float sampleRpm;
-        private final float sampleVolume;
+        private final String id;
+        private final String displayName;
+        private final EnumMap<FerrariSample, SampleSettings> samples;
 
-        FerrariSample(final SimSoundEntry event, final float sampleRpm, final float sampleVolume) {
-            this.event = event;
-            this.sampleRpm = sampleRpm;
-            this.sampleVolume = sampleVolume;
+        AudioProfile(final String id, final String displayName, final SampleSettings onLow, final SampleSettings onHigh,
+                     final SampleSettings offLow, final SampleSettings offHigh, final SampleSettings limiter) {
+            this.id = id;
+            this.displayName = displayName;
+            this.samples = new EnumMap<>(FerrariSample.class);
+            this.samples.put(FerrariSample.ON_LOW, onLow);
+            this.samples.put(FerrariSample.ON_HIGH, onHigh);
+            this.samples.put(FerrariSample.OFF_LOW, offLow);
+            this.samples.put(FerrariSample.OFF_HIGH, offHigh);
+            this.samples.put(FerrariSample.LIMITER, limiter);
         }
+
+        public String id() {
+            return this.id;
+        }
+
+        public String displayName() {
+            return this.displayName;
+        }
+
+        private SampleSettings get(final FerrariSample sample) {
+            return this.samples.get(sample);
+        }
+    }
+
+    private enum FerrariSample {
+        ON_LOW,
+        ON_HIGH,
+        OFF_LOW,
+        OFF_HIGH,
+        LIMITER
+    }
+
+    private record SampleSettings(SimSoundEntry event, float sampleRpm, float sampleVolume) {
     }
 
     private static class FerrariEngineSoundInstance extends AbstractTickableSoundInstance {
@@ -109,13 +180,15 @@ public class AnalogTransmissionEngineSoundManager {
 
         private final AnalogTransmissionBlockEntity analogTransmission;
         private final FerrariSample sample;
+        private final SampleSettings settings;
         private int inactiveTicks;
 
         protected FerrariEngineSoundInstance(final AnalogTransmissionBlockEntity analogTransmission, final SoundEvent event,
-                                             final RandomSource random, final FerrariSample sample) {
+                                             final RandomSource random, final FerrariSample sample, final SampleSettings settings) {
             super(event, SoundSource.BLOCKS, random);
             this.analogTransmission = analogTransmission;
             this.sample = sample;
+            this.settings = settings;
             this.looping = true;
             this.delay = 0;
             this.attenuation = SoundInstance.Attenuation.LINEAR;
@@ -125,6 +198,10 @@ public class AnalogTransmissionEngineSoundManager {
             this.y = soundPosition.y;
             this.z = soundPosition.z;
             this.volume = 0.001f;
+        }
+
+        void stopFromManager() {
+            this.stop();
         }
 
         @Override
@@ -158,21 +235,21 @@ public class AnalogTransmissionEngineSoundManager {
             }
 
             this.inactiveTicks = 0;
-            this.pitch = getRpmPitch(rpm, this.sample.sampleRpm);
-            this.volume = getSampleGain(this.sample, rpm, throttle) * ENGINE_VOLUME_SCALE;
+            this.pitch = getRpmPitch(rpm, this.settings.sampleRpm);
+            this.volume = getSampleGain(this.sample, this.settings, rpm, throttle) * ENGINE_VOLUME_SCALE;
         }
 
-        private static float getSampleGain(final FerrariSample sample, final float rpm, final float throttle) {
+        private static float getSampleGain(final FerrariSample sample, final SampleSettings settings, final float rpm, final float throttle) {
             final CrossFade rpmFade = crossFade(rpm, 3000.0f, 6500.0f);
             final CrossFade throttleFade = crossFade(throttle, 0.0f, 1.0f);
             final float limiterGain = ratio(rpm, SOFT_LIMITER_RPM * 0.93f, LIMITER_RPM);
 
             return switch (sample) {
-                case ON_LOW -> throttleFade.gain1 * rpmFade.gain2 * sample.sampleVolume;
-                case ON_HIGH -> throttleFade.gain1 * rpmFade.gain1 * sample.sampleVolume;
-                case OFF_LOW -> throttleFade.gain2 * rpmFade.gain2 * sample.sampleVolume;
-                case OFF_HIGH -> throttleFade.gain2 * rpmFade.gain1 * sample.sampleVolume;
-                case LIMITER -> limiterGain * sample.sampleVolume;
+                case ON_LOW -> throttleFade.gain1 * rpmFade.gain2 * settings.sampleVolume;
+                case ON_HIGH -> throttleFade.gain1 * rpmFade.gain1 * settings.sampleVolume;
+                case OFF_LOW -> throttleFade.gain2 * rpmFade.gain2 * settings.sampleVolume;
+                case OFF_HIGH -> throttleFade.gain2 * rpmFade.gain1 * settings.sampleVolume;
+                case LIMITER -> limiterGain * settings.sampleVolume;
             };
         }
 
