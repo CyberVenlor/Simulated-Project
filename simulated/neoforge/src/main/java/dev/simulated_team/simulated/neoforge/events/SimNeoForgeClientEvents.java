@@ -1,13 +1,17 @@
 package dev.simulated_team.simulated.neoforge.events;
 
 import dev.simulated_team.simulated.Simulated;
+import dev.simulated_team.simulated.content.blocks.analog_transmission.AnalogTransmissionEngineSoundManager;
 import dev.simulated_team.simulated.content.blocks.redstone.linked_typewriter.LinkedTypewriterItemBindHandler;
 import dev.simulated_team.simulated.events.SimulatedCommonClientEvents;
 import dev.simulated_team.simulated.index.SimClickInteractions;
 import dev.simulated_team.simulated.index.SimItems;
 import dev.simulated_team.simulated.index.SimKeys;
 import dev.simulated_team.simulated.neoforge.service.SimpleResourceManagerRegistryService;
+import net.minecraft.commands.CommandSourceStack;
+import net.minecraft.commands.Commands;
 import net.minecraft.client.Minecraft;
+import net.minecraft.network.chat.Component;
 import net.minecraft.server.packs.resources.PreparableReloadListener;
 import net.minecraft.world.InteractionResult;
 import net.neoforged.api.distmarker.Dist;
@@ -40,6 +44,30 @@ public class SimNeoForgeClientEvents {
 	@SubscribeEvent
 	public static void keyInput(final InputEvent.Key event) {
 		SimulatedCommonClientEvents.onAfterKeyPress(event.getKey(), event.getScanCode(), event.getAction(), event.getModifiers());
+	}
+
+	@SubscribeEvent
+	public static void registerClientCommands(final RegisterClientCommandsEvent event) {
+		event.getDispatcher().register(Commands.literal("simulated")
+				.then(Commands.literal("engine_audio")
+						.executes(context -> {
+							final AnalogTransmissionEngineSoundManager.AudioProfile profile = AnalogTransmissionEngineSoundManager.getActiveProfile();
+							context.getSource().sendSuccess(() -> Component.literal("Analog transmission engine audio: " + profile.displayName()), false);
+							return 1;
+						})
+						.then(Commands.literal("bac_mono").executes(context -> setEngineAudioProfile(context.getSource(), "bac_mono")))
+						.then(Commands.literal("ferrari_458").executes(context -> setEngineAudioProfile(context.getSource(), "ferrari_458")))
+						.then(Commands.literal("procar").executes(context -> setEngineAudioProfile(context.getSource(), "procar")))));
+	}
+
+	private static int setEngineAudioProfile(final CommandSourceStack source, final String profileId) {
+		if (!AnalogTransmissionEngineSoundManager.setActiveProfile(profileId)) {
+			source.sendFailure(Component.literal("Unknown analog transmission engine audio profile: " + profileId));
+			return 0;
+		}
+
+		source.sendSuccess(() -> Component.literal("Analog transmission engine audio: " + AnalogTransmissionEngineSoundManager.getActiveProfile().displayName()), false);
+		return 1;
 	}
 
 	@SubscribeEvent

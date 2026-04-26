@@ -3,6 +3,7 @@ package dev.simulated_team.simulated.events;
 import dev.ryanhcode.sable.util.SableDistUtil;
 import dev.simulated_team.simulated.SimulatedClient;
 import dev.simulated_team.simulated.client.BlockPropertiesTooltip;
+import dev.simulated_team.simulated.content.blocks.analog_transmission.AnalogTransmissionEngineSoundManager;
 import dev.simulated_team.simulated.content.blocks.redstone.linked_typewriter.LinkedTypewriterInteractionHandler;
 import dev.simulated_team.simulated.content.blocks.rope.strand.client.ZiplineClientManager;
 import dev.simulated_team.simulated.content.blocks.throttle_lever.ThrottleLeverClientGripHandler;
@@ -22,6 +23,7 @@ import foundry.veil.api.event.VeilRenderLevelStageEvent;
 import net.minecraft.client.Camera;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.renderer.LevelRenderer;
@@ -189,6 +191,7 @@ public class SimulatedCommonClientEvents {
         HoldInteractionManager.tick(level, player);
         HoldTipManager.tick();
         EndSeaRenderer.tick();
+        AnalogTransmissionEngineSoundManager.tick((ClientLevel) level, player);
 
         SimulatedClient.PLUNGER_LAUNCHER_RENDER_HANDLER.tick();
     }
